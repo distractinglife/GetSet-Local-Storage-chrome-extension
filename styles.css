@@ -1,95 +1,184 @@
-* { 
-	box-sizing: border-box;
+/* Keeps the 0.2.0 look users know: yellow header and footer, grey buttons,
+   yellow hover for Get/Set, red hover for Clear. Light only on purpose. */
+:root {
+    --yellow: #f9f960;
+    --ink: #111;
+    --line: #e6e6e6;
+    --button: #efefef;
+    --button-border: #a9a9a9;
+    --red: #d32f2f;
+    --red-soft: #fdecec;
+    color-scheme: light;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
 }
 
 body {
-    width: 300px;
+    width: 320px;
     margin: 0;
-    overflow-y: auto;
+    background: #fff;
+    color: var(--ink);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.extenstionTitleCont {
-    width: 100%;
-    background-color: yellow;
-    color: black;
-    padding: 2px 4px;
+.header {
     display: flex;
-    justify-content: center;
     align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--yellow);
 }
 
-button {
-    width: 70px;
-    height: 30px;
-    border-radius: 4px;
+.title {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.25;
 }
 
-button:hover {
-    cursor: pointer;
+.site {
+    margin: 2px 0 0;
+    max-width: 250px;
+    overflow: hidden;
+    color: #444;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.localStorageCont, .sessionStorageCont {
-    padding: 4px;
+main {
+    padding: 0 12px 10px;
 }
 
-.localStorageBtns, .sessionStorageBtns {
+.section {
+    padding: 8px 0 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.section.all {
+    border-bottom: 0;
+}
+
+h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+}
+
+.badge {
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: var(--yellow);
+    font-size: 10px;
+    font-weight: 600;
+    vertical-align: 1px;
+}
+
+.actions {
     display: flex;
     justify-content: space-around;
 }
 
-#getLS:hover, #setLS:hover, #getSS:hover, #setSS:hover {
-    background-color: yellow;
-    font-weight: bold;
-    border-bottom: 3px solid black;
+button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
 }
 
-#clearLS:hover, #clearSS:hover {
-    background-color: red;
-    font-weight: bold;
+.actions button {
+    width: 84px;
+    height: 30px;
+    border: 1px solid var(--button-border);
+    border-radius: 5px;
+    background: var(--button);
 }
 
-#feedbackLS, #feedbackSS {
-    background-color: yellow;
+.actions button:hover {
+    background: var(--yellow);
+    font-weight: 600;
+}
+
+.actions button.danger:hover {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid #1a73e8;
+    outline-offset: 2px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: progress;
+}
+
+.status {
+    margin: 4px 0 0;
+    padding: 6px 10px;
+    border-radius: 5px;
+    background: var(--yellow);
     text-align: center;
 }
 
-
-#infoTitle:hover, #supportTitle:hover, #reportTitle:hover {
-    cursor: pointer;
-    font-weight: bold;
+.status:empty {
+    display: none;
 }
 
-.moreinfoContent, .supportContent, .reportContent {
-    display: none;
-    justify-content: center;
+.status.error {
+    background: var(--red-soft);
+    color: var(--red);
+}
+
+.tabs {
+    display: flex;
+    background: var(--yellow);
+}
+
+.tab {
+    flex: 1;
+    padding: 7px 0 5px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+}
+
+.tab:hover,
+.tab.active {
+    font-weight: 700;
+}
+
+.tab.active {
+    border-bottom-color: var(--ink);
+}
+
+.panel {
+    padding: 10px 12px 12px;
+}
+
+.panel p {
+    margin: 0 0 6px;
+}
+
+.links {
+    display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2px 8px;
-}
-
-.supportContent > div,  .reportContent > div {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 30px;
+    gap: 8px;
 }
 
 a {
+    color: #2a33d4;
     text-decoration: none;
 }
 
 a:hover {
-    font-weight: bold;
+    font-weight: 600;
 }
-
-.footerInfo {
-    height: 30px;
-    padding: 4px;
-    background-color: yellow;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-}
-
-
-

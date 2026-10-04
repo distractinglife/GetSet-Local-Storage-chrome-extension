@@ -1,10 +1,22 @@
 {
-  "name": "GetSet Local Storage & Session Storage",
-  "version": "0.2.0",
-  "description": "Get all the Local/Session Storage values of one domain and set all those values in other domain's local/session storage. Also, clear the local/session storage.",
-  "permissions": ["scripting", "activeTab", "storage"],
+  "name": "GetSet Local Storage, Session Storage & Cookies",
+  "version": "0.3.0",
+  "description": "Copy local storage, session storage and cookies from one site to another, e.g. from staging to localhost. Also clear them.",
+  "homepage_url": "https://github.com/distractinglife/GetSet-Local-Storage-chrome-extension",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
+  "optional_permissions": [
+    "cookies"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "action": {
-    "default_title": "GetSet Local Storage & Session Storage",
+    "default_title": "GetSet Local Storage, Session Storage & Cookies",
     "default_popup": "popup.html"
   },
   "icons": {
@@ -13,5 +25,6 @@
     "64": "images/favicon64x64.png",
     "128": "images/favicon128x128.png"
   },
+  "minimum_chrome_version": "102",
   "manifest_version": 3
 }

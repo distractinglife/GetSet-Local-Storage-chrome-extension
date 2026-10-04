@@ -1,0 +1,12 @@
+{
+  "name": "getset-local-storage-chrome-extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "package": "sh scripts/package.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

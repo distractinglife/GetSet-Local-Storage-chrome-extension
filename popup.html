@@ -1,64 +1,80 @@
-<html>
+<!doctype html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <header class="extenstionTitleCont">
-      <img class="extensionLogo" width="32px" height="32px" src="./images/favicon64x64.png" alt="logo">
-      <h3 class="extensionTitle">GetSet Local Storage & Session Storage</h3>
+    <header class="header">
+      <img class="logo" width="32" height="32" src="./images/favicon64x64.png" alt="">
+      <div>
+        <h1 class="title">GetSet Local Storage, Session Storage & Cookies</h1>
+        <p class="site" id="site" hidden></p>
+      </div>
     </header>
-    <main>
-        <div class="localStorageCont">
-          <h3 class="localStorageTitle">Local Storage:</h3>
-          <div class="localStorageBtns">
-            <button id="getLS" type="button" >Get</button>
-            <button id="setLS" type="button" >Set</button>
-            <button id="clearLS" type="button" >Clear</button>
-          </div>
-          <p id="feedbackLS"></p>
-        </div>
 
-        <div class="sessionStorageCont">
-          <h3 class="sessionStorageTitle">Session Storage:</h3>
-          <div class="sessionStorageBtns">
-            <button id="getSS" type="button" >Get</button>
-            <button id="setSS" type="button" >Set</button>
-            <button id="clearSS" type="button" >Clear</button>
-          </div>
-          <p id="feedbackSS"></p>
+    <main>
+      <section class="section" data-kind="local">
+        <h2>Local Storage:</h2>
+        <div class="actions">
+          <button type="button" data-action="get">Get</button>
+          <button type="button" data-action="set">Set</button>
+          <button type="button" class="danger" data-action="clear">Clear</button>
         </div>
-        
+      </section>
+
+      <section class="section" data-kind="session">
+        <h2>Session Storage:</h2>
+        <div class="actions">
+          <button type="button" data-action="get">Get</button>
+          <button type="button" data-action="set">Set</button>
+          <button type="button" class="danger" data-action="clear">Clear</button>
+        </div>
+      </section>
+
+      <section class="section" data-kind="cookies">
+        <h2>Cookies: <span class="badge">New</span></h2>
+        <div class="actions">
+          <button type="button" data-action="get">Get</button>
+          <button type="button" data-action="set">Set</button>
+          <button type="button" class="danger" data-action="clear">Clear</button>
+        </div>
+      </section>
+
+      <section class="section all" data-kind="all">
+        <h2>All of the above:</h2>
+        <div class="actions">
+          <button type="button" data-action="get">Copy All</button>
+          <button type="button" data-action="set">Paste All</button>
+          <button type="button" class="danger" data-action="clear">Clear All</button>
+        </div>
+      </section>
+
+      <p class="status" id="status" role="status" aria-live="polite"></p>
     </main>
-    <div class="footer">
-      <div class="footerInfo">
-        <p id="infoTitle">More Info</p>
-        <p id="supportTitle">Show Support</p>
-        <p id="reportTitle">Need help?</p>
+
+    <footer class="footer">
+      <nav class="tabs">
+        <button type="button" class="tab" data-panel="infoPanel">More Info</button>
+        <button type="button" class="tab" data-panel="supportPanel">Show Support</button>
+        <button type="button" class="tab" data-panel="helpPanel">Need help?</button>
+      </nav>
+      <div class="panel" id="infoPanel" hidden>
+        <p><b>Get:</b> Gets all the values of this site.</p>
+        <p><b>Set:</b> Sets the values we got earlier on this site.</p>
+        <p><b>Clear:</b> Clears all the values of this site, after asking.</p>
+        <p><b>Copy/Paste/Clear All:</b> Does the same for local storage, session storage and cookies together.</p>
+        <p><b>Cookies:</b> Chrome asks once per site for access. If the popup closes, open it and click again. Copied cookies are kept in memory only, until the browser closes.</p>
       </div>
-      <div class="hiddenContent">
-        <div class="moreinfoContent">
-          <p><b>Get:</b> Gets all the storage (local/session) values of this domain.</p>
-          <p><b>Set:</b> Sets all the storage (local/session) values we got earlier in this domain.</p>
-          <p><b>Clear:</b> Clears all the storage (local/session) values for this domain.</p>
-        </div>
-        <div class="supportContent">
-          <div class="rateOrReview">
-            <a href="https://chrome.google.com/webstore/detail/getset-local-storage/ippidodkgapkblnaegmgjhdflkbonoco" target="_blank">Give a 5 star review!</a>
-          </div>
-          <div class="starTheRepo">
-            <a href="https://github.com/VinayDasari07/GetSet-Local-Storage-chrome-extension" target="_blank">Star the GitHub Repo!</a>
-          </div>
-          <div class="buyMeACoffee">
-            <a href="https://www.buymeacoffee.com/vinaydasari" target="_blank">Buy me a Coffee!</a>
-          </div>
-        </div>
-        <div class="reportContent">
-          <div class="reportAnIssue">
-            <a href="https://github.com/VinayDasari07/GetSet-Local-Storage-chrome-extension/issues" target="_blank">Report an issue</a>
-          </div>
-        </div>
+      <div class="panel links" id="supportPanel" hidden>
+        <a href="https://chromewebstore.google.com/detail/getset-local-storage-sess/ippidodkgapkblnaegmgjhdflkbonoco/reviews" target="_blank">Give a 5 star review!</a>
+        <a href="https://github.com/distractinglife/GetSet-Local-Storage-chrome-extension" target="_blank">Star the GitHub Repo!</a>
       </div>
+      <div class="panel links" id="helpPanel" hidden>
+        <a href="https://github.com/distractinglife/GetSet-Local-Storage-chrome-extension/issues" target="_blank">Report an issue</a>
       </div>
+    </footer>
+
     <script type="module" src="popup.js"></script>
   </body>
 </html>
