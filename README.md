@@ -11,10 +11,13 @@ For example, get the values from a dev/staging/prod URL and set them on localhos
 2. Open the target site, click **Set**.
 3. **Clear** removes all values of that kind on the current site (asks first).
 
-Cookies need per-site access, which Chrome asks for the first time you use them on a site.
-Copied cookies are kept in memory (`chrome.storage.session`) and are dropped when the browser closes.
-Set writes host-only cookies on the target site. On plain http hosts other than localhost, Secure
-cookies are downgraded and `__Host-`/`__Secure-` cookies are skipped, because Chrome cannot store them there.
+Cookies need access to the site and its parent domains (both http and https), which Chrome asks
+for the first time you use them on a site. Copied cookies are kept in memory (`chrome.storage.session`)
+and are dropped when the browser closes. Incognito tabs use their own cookie store.
+
+Set writes host-only cookies on the target site. Secure cookies (including `__Host-`/`__Secure-`) are
+only written to https or localhost targets, never downgraded to plain http. When two copied cookies
+share a name and path, the more specific one (host-only, then longest domain) is kept.
 
 ## Development
 
