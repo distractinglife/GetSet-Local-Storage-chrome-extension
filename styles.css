@@ -69,16 +69,6 @@ h2 {
     font-size: 14px;
 }
 
-.badge {
-    margin-left: 4px;
-    padding: 1px 6px;
-    border-radius: 8px;
-    background: var(--yellow);
-    font-size: 10px;
-    font-weight: 600;
-    vertical-align: 1px;
-}
-
 .actions {
     display: flex;
     justify-content: space-around;
