@@ -21,12 +21,17 @@ share a name and path, the more specific one (host-only, then longest domain) is
 
 ## Development
 
-Requires Node 20+. No dependencies.
+Requires Node 20+.
 
 ```bash
-npm test          # unit tests (node --test)
-npm run package   # builds dist/getset-<version>.zip for the Chrome Web Store
+npm test               # unit tests (node --test), no install needed
+npm install            # once, for the browser tests (downloads Chrome for Testing, ~150 MB)
+npm run test:browser   # loads the extension in Chrome for Testing against local test sites
+npm run package        # builds dist/getset-<version>.zip for the Chrome Web Store
 ```
+
+The browser tests cannot click Chrome's permission prompt, so they load a copy of the extension that
+declares exactly the host patterns GetSet requests at runtime. Incognito is only covered by unit tests.
 
 Load it in Chrome: `chrome://extensions`, turn on Developer mode, **Load unpacked**, pick this folder.
 

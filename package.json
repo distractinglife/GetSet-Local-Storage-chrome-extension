@@ -4,9 +4,13 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "test:browser": "node --test --test-concurrency=1 e2e/*.e2e.js",
     "package": "sh scripts/package.sh"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.12.0"
   }
 }
