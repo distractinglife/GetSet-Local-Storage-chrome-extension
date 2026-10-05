@@ -198,18 +198,18 @@ test('cookie clear removes every cookie of the host at its own domain and path',
     assert.deepEqual(chrome.calls.removed.map((r) => r.url), ['http://localhost/', 'https://localhost/api'])
 })
 
-test('copy all reads every kind before saving any', async () => {
+test('get all reads every kind before saving any', async () => {
     const chrome = fakeChrome({
         script: ({ args }) => ({ count: 1, entries: [{ [args[0]]: 'new' }] }),
         cookies: [cookie({})],
     })
     const message = await createActions(chrome).run('all', 'get', TAB)
-    assert.equal(message, 'Copied 1 local storage value, 1 session storage value and 1 cookie from localhost.')
+    assert.equal(message, 'Got 1 local storage value, 1 session storage value and 1 cookie from localhost.')
     assert.deepEqual(chrome.calls.scripts.map((s) => s.args[0]), ['local', 'session'])
     assert.deepEqual(chrome.storage.local.data.session, [{ session: 'new' }])
 })
 
-test('a failed copy all keeps the whole previous copy', async () => {
+test('a failed get all keeps the whole previous copy', async () => {
     const chrome = fakeChrome({ script: () => ({ count: 1, entries: [{ fresh: '1' }] }) })
     await chrome.storage.local.set({ local: [{ old: '1' }], session: [{ old: '2' }] })
     await chrome.storage.session.set({ cookies: [cookie({ name: 'oldCookie' })] })
@@ -222,29 +222,29 @@ test('a failed copy all keeps the whole previous copy', async () => {
     assert.equal(chrome.storage.session.data.cookies[0].name, 'oldCookie')
 })
 
-test('paste all skips kinds that were never copied', async () => {
+test('set all skips kinds that were never copied', async () => {
     const chrome = fakeChrome({ script: () => ({ count: 2 }) })
     await chrome.storage.local.set({ local: [{ a: '1' }, { b: '2' }] })
     await chrome.storage.session.set({ cookies: [cookie({ name: 'old', session: false, expirationDate: 1 })] })
     const message = await createActions(chrome).run('all', 'set', TAB)
-    assert.equal(message, 'Pasted 2 local storage values and 0 cookies on localhost. 1 cookie skipped (expired).')
+    assert.equal(message, 'Set 2 local storage values and 0 cookies on localhost. 1 cookie skipped (expired).')
     assert.equal(chrome.calls.scripts.length, 1)
 })
 
-test('paste all with nothing copied changes nothing', async () => {
+test('set all with nothing copied changes nothing', async () => {
     const chrome = fakeChrome()
     assert.match(await createActions(chrome).run('all', 'set', TAB), /Click Get on the source site first/)
     assert.equal(chrome.calls.scripts.length + chrome.calls.set.length, 0)
 })
 
-test('paste all reports what finished before a failure', async () => {
+test('set all reports what finished before a failure', async () => {
     const chrome = fakeChrome({
         script: ({ args }) => (args[0] === 'local' ? { count: 2 } : { error: 'Stopped after 0 session storage values: QuotaExceededError' }),
     })
     await chrome.storage.local.set({ local: [{ a: '1' }, { b: '2' }], session: [{ c: '3' }] })
     await assert.rejects(
         createActions(chrome).run('all', 'set', TAB),
-        /^Error: Pasted 2 local storage values on localhost, then stopped: Stopped after 0 session/
+        /^Error: Set 2 local storage values on localhost, then stopped: Stopped after 0 session/
     )
 })
 

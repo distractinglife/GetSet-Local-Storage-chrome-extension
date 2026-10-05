@@ -113,7 +113,7 @@ test('popup renders every section without errors', async () => {
     await page.close()
 })
 
-test('copy all reads host, path-scoped and Secure parent-domain cookies', async () => {
+test('get all reads host, path-scoped and Secure parent-domain cookies', async () => {
     const staging = await open(site('staging.example.test', '/app'))
     await staging.evaluate(() => localStorage.setItem('token', 'abc'))
     await setCookies([
@@ -126,16 +126,16 @@ test('copy all reads host, path-scoped and Secure parent-domain cookies', async 
     const result = await run('all', 'get', site('staging.example.test', '/app'))
     assert.deepEqual(result, {
         message:
-            'Copied 1 local storage value, 0 session storage values and 5 cookies from staging.example.test.',
+            'Got 1 local storage value, 0 session storage values and 5 cookies from staging.example.test.',
     })
 })
 
-test('paste all onto localhost keeps Secure cookies and the most specific duplicate', async () => {
+test('set all onto localhost keeps Secure cookies and the most specific duplicate', async () => {
     const local = await open(site('localhost'))
     const result = await run('all', 'set', site('localhost'))
     assert.deepEqual(result, {
         message:
-            'Pasted 1 local storage value and 4 cookies on localhost. 1 cookie skipped (same name from another domain).',
+            'Set 1 local storage value and 4 cookies on localhost. 1 cookie skipped (same name from another domain).',
     })
     assert.equal(await local.evaluate(() => localStorage.getItem('token')), 'abc')
     assert.deepEqual(await cookieNames('localhost'), [
