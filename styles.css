@@ -35,6 +35,11 @@ body {
     background: var(--yellow);
 }
 
+.logo {
+    flex-shrink: 0;
+    border-radius: 8px;
+}
+
 .title {
     margin: 0;
     font-size: 15px;
