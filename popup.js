@@ -1,364 +1,70 @@
-;(() => {
-    async function getActiveTabURL() {
-        try {
-            const tabs = await chrome.tabs.query({
-                currentWindow: true,
-                active: true,
-            })
-            return tabs[0]
-        } catch (err) {
-            console.error('Error occured in getActiveTabURL', err)
-        }
+import { createActions, hostOf } from './lib/actions.js'
+
+const actions = createActions(chrome)
+const status = document.querySelector('#status')
+const buttons = document.querySelectorAll('main button')
+
+// Resolved up front so a click can request cookie access synchronously.
+let activeTab
+chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+    activeTab = tab
+    const site = document.querySelector('#site')
+    site.textContent = `On ${hostOf(tab)}`
+    site.hidden = false
+})
+
+function show(message, isError = false) {
+    status.textContent = message
+    status.classList.toggle('error', isError)
+}
+
+function setBusy(busy) {
+    buttons.forEach((button) => (button.disabled = busy))
+}
+
+function clearQuestion(kind, host) {
+    if (kind === 'all') {
+        return `Clear all local storage, session storage and cookies of ${host}? You will likely be logged out.`
     }
+    const label = kind === 'cookies' ? 'cookies' : `${kind} storage values`
+    return `Clear all ${label} of ${host}?`
+}
 
-    try {
-        const session = 'session'
-        const local = 'local'
+function run(kind, action) {
+    const tab = activeTab
+    if (!tab) return show('This tab is still loading. Try again.', true)
 
-        const getLocalStorageBtn = document.querySelector('#getLS')
-        const setLocalStorageBtn = document.querySelector('#setLS')
-        const clearLocalStorageBtn = document.querySelector('#clearLS')
-        const feedBackForLocalStorage = document.querySelector('#feedbackLS')
-
-        const getSessionStorageBtn = document.querySelector('#getSS')
-        const setSessionStorageBtn = document.querySelector('#setSS')
-        const clearSessionStorageBtn = document.querySelector('#clearSS')
-        const feedBackForSessionStorage = document.querySelector('#feedbackSS')
-
-        const footerInfo = document.querySelector('.footerInfo')
-
-        /*
-        <-----------Util Functions Start------------------------------------------------------>
-        */
-
-        // Get all the storage values from the domain to store it in extension's LS
-        function getDomainStorageData(typeOfStorage = 'local') {
-            try {
-                const selectedStorage =
-                    typeOfStorage === 'local' ? localStorage : sessionStorage
-                const values = []
-                if (selectedStorage) {
-                    for (let i = 0; i < selectedStorage?.length; i++) {
-                        const key = selectedStorage.key(i)
-                        const selectedStorageObject = {
-                            [key]: selectedStorage.getItem(key),
-                        }
-                        values.push(selectedStorageObject)
-                    }
-                }
-                console.log(
-                    'getDomainStorageData-typeOfStorage-values',
-                    typeOfStorage,
-                    values?.length || 0
-                )
-                return values
-            } catch (err) {
-                console.error(
-                    'Error occured in getDomainStorageData',
-                    typeOfStorage,
-                    err
-                )
-            }
-        }
-
-        // Set all the storage values from the extension's LS to the domain's storage
-        function setDomainStorageData(typeOfStorage = 'local') {
-            try {
-                const selectedStorage =
-                    typeOfStorage === 'local' ? localStorage : sessionStorage
-                if (selectedStorage) {
-                    chrome.storage.local.get(typeOfStorage, function (items) {
-                        if (items[typeOfStorage]) {
-                            for (const storage of items[typeOfStorage]) {
-                                const objKey = Object.keys(storage)
-                                selectedStorage.setItem(
-                                    objKey[0],
-                                    storage[objKey]
-                                )
-                            }
-                        }
-                    })
-                }
-            } catch (err) {
-                console.error(
-                    'Error occured in setDomainStorageData',
-                    typeOfStorage,
-                    err
-                )
-            }
-        }
-
-        function clearDomainStorageData(typeOfStorage = 'local') {
-            const selectedStorage =
-                typeOfStorage === 'local' ? localStorage : sessionStorage
-            selectedStorage && selectedStorage?.clear()
-        }
-
-        function clearExtensionStorage(typeOfStorage = 'local') {
-            chrome.storage.local.remove([typeOfStorage], function () {
-                const error = chrome.runtime.lastError
-                if (error) {
-                    console.error(error)
-                }
-                console.log(
-                    'Cleared Existing Chrome Extension Storage!!',
-                    typeOfStorage
-                )
-            })
-        }
-
-        function changeFooterTabStyles(target) {
-            let infoTitle = document.querySelector('#infoTitle')
-            let supportTitle = document.querySelector('#supportTitle')
-            let reportTitle = document.querySelector('#reportTitle')
-            const allTabs = [infoTitle, supportTitle, reportTitle]
-            allTabs.forEach((tab) => {
-                if (tab?.id === target) {
-                    tab.style.borderBottom = '3px solid black'
-                    tab.style.fontWeight = 'bold'
-                } else {
-                    tab.style.borderBottom = '0px'
-                    tab.style.fontWeight = 'normal'
-                }
-            })
-        }
-
-        function showHideFooterTabs(target) {
-            let moreinfoContent = document.querySelector('.moreinfoContent')
-            let supportContent = document.querySelector('.supportContent')
-            let reportContent = document.querySelector('.reportContent')
-            const allTabsContent = [
-                moreinfoContent,
-                supportContent,
-                reportContent,
-            ]
-            allTabsContent.forEach((tab) => {
-                console.log(tab.className, 'className')
-                if (tab?.className === target) {
-                    tab.style.display = 'block'
-                } else {
-                    tab.style.display = 'none'
-                }
-            })
-        }
-
-        /*
-        <-----------Util Functions End------------------------------------------------------>
-        */
-
-        /*
-        <-----------Event Listeners Start------------------------------------------------------>
-        */
-        getLocalStorageBtn?.addEventListener('click', async () => {
-            const activeTab = await getActiveTabURL()
-            const tabId = activeTab?.id
-            await clearExtensionStorage(local)
-            chrome.scripting.executeScript(
-                {
-                    target: { tabId: tabId },
-                    func: getDomainStorageData,
-                    args: [local], // passing typeOfStorage to getDomainStorageData func
-                },
-                (injectionResults) => {
-                    try {
-                        console.log(
-                            'injectionResults of getLocalStorageBtn.addEventListener',
-                            injectionResults[0]?.result?.length ?? 0
-                        )
-                        for (const frameResult of injectionResults) {
-                            const result = frameResult?.result || []
-                            chrome.storage.local.set({
-                                local: result,
-                            })
-                            feedBackForLocalStorage.innerHTML =
-                                'All the local storage values are retrieved. ✔️'
-                        }
-                    } catch (err) {
-                        console.error(
-                            'Error occured in injectionResults of getLocalStorageBtn.addEventListener',
-                            err
-                        )
-                    }
-                }
-            )
+    // Must start before any await: it needs the click's user gesture.
+    const access = actions.requestAccess(kind, tab)
+    show('Working...')
+    setBusy(true)
+    access
+        .then((granted) => {
+            if (!granted) return `Cookie access was not granted for ${hostOf(tab)}.`
+            if (action === 'clear' && !confirm(clearQuestion(kind, hostOf(tab)))) return 'Cancelled.'
+            return actions.run(kind, action, tab)
         })
+        .then(
+            (message) => show(message),
+            (error) => show(error.message, true)
+        )
+        .finally(() => setBusy(false))
+}
 
-        getSessionStorageBtn?.addEventListener('click', async () => {
-            const activeTab = await getActiveTabURL()
-            const tabId = activeTab?.id
-            await clearExtensionStorage(session)
-            chrome.scripting.executeScript(
-                {
-                    target: { tabId: tabId },
-                    func: getDomainStorageData,
-                    args: [session], // passing typeOfStorage to getDomainStorageData func
-                },
-                (injectionResults) => {
-                    try {
-                        console.log(
-                            'injectionResults of getSessionStorageBtn.addEventListener',
-                            injectionResults[0]?.result?.length ?? 0
-                        )
-                        for (const frameResult of injectionResults) {
-                            const result = frameResult?.result || []
-                            chrome.storage.local.set({
-                                session: result,
-                            })
-                            feedBackForSessionStorage.innerHTML =
-                                'All the session storage values are retrieved. ✔️'
-                        }
-                    } catch (err) {
-                        console.error(
-                            'Error occured in injectionResults of getSessionStorageBtn.addEventListener',
-                            err
-                        )
-                    }
-                }
-            )
+document.querySelector('main').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-action]')
+    if (!button) return
+    run(button.closest('[data-kind]').dataset.kind, button.dataset.action)
+})
+
+// Footer tabs: clicking the open tab again closes its panel.
+const tabs = document.querySelectorAll('.tab')
+tabs.forEach((tab) =>
+    tab.addEventListener('click', () => {
+        const opening = !tab.classList.contains('active')
+        tabs.forEach((other) => other.classList.toggle('active', opening && other === tab))
+        document.querySelectorAll('.panel').forEach((panel) => {
+            panel.hidden = !opening || panel.id !== tab.dataset.panel
         })
-
-        setLocalStorageBtn?.addEventListener('click', async () => {
-            const activeTab = await getActiveTabURL()
-            console.log('This tab information', activeTab)
-            const tabId = activeTab?.id
-            chrome.scripting.executeScript(
-                {
-                    target: { tabId: tabId },
-                    func: setDomainStorageData,
-                    args: [local], // passing typeOfStorage to setDomainStorageData func
-                },
-                () => {
-                    try {
-                        console.log('Setting LocalStorage successfull')
-                        feedBackForLocalStorage.innerHTML =
-                            'All the retrieved local storage values are set. ✔️'
-                    } catch (err) {
-                        console.error(
-                            'Error occured in injectionResults of setStoragehandler',
-                            err
-                        )
-                    }
-                }
-            )
-        })
-
-        setSessionStorageBtn?.addEventListener('click', async () => {
-            const activeTab = await getActiveTabURL()
-            console.log('This tab information', activeTab)
-            const tabId = activeTab?.id
-            chrome.scripting.executeScript(
-                {
-                    target: { tabId: tabId },
-                    func: setDomainStorageData,
-                    args: [session], // passing typeOfStorage to setDomainStorageData func
-                },
-                () => {
-                    try {
-                        console.log('Setting SessionStorage Successfull')
-                        feedBackForSessionStorage.innerHTML =
-                            'All the retrieved session storage values are set. ✔️'
-                    } catch (err) {
-                        console.error(
-                            'Error occured in injectionResults of setStoragehandler',
-                            err
-                        )
-                    }
-                }
-            )
-        })
-
-        clearLocalStorageBtn?.addEventListener('click', async () => {
-            const activeTab = await getActiveTabURL()
-            console.log('This tab information', activeTab)
-            const tabId = activeTab?.id
-            const tabURL = activeTab?.url || ''
-            let domain
-            if (tabURL) {
-                domain = new URL(tabURL)
-            }
-            const text = `You're about to clear all the local storage values of ${
-                domain?.hostname || 'this domain'
-            }. Click OK to confirm or Cancel to go back`
-            if (confirm(text) == true) {
-                chrome.scripting.executeScript(
-                    {
-                        target: { tabId: tabId },
-                        func: clearDomainStorageData,
-                        args: [local], // passing typeOfStorage to clearDomainStorageData func
-                    },
-                    () => {
-                        try {
-                            console.log(
-                                'Clearing Local Storage Values Successfull'
-                            )
-                            feedBackForLocalStorage.innerHTML =
-                                'All the local storage values are cleared. ✔️'
-                        } catch (err) {
-                            console.error(
-                                'Error occured in injectionResults of clearLocalStorageBtn',
-                                err
-                            )
-                        }
-                    }
-                )
-            } else {
-            }
-        })
-
-        clearSessionStorageBtn?.addEventListener('click', async () => {
-            const activeTab = await getActiveTabURL()
-            console.log('This tab information', activeTab)
-            const tabId = activeTab?.id
-            const tabURL = activeTab?.url || ''
-            let domain
-            if (tabURL) {
-                domain = new URL(tabURL)
-            }
-            const text = `You're about to clear all the session storage values of ${
-                domain?.hostname || 'this domain'
-            }. Click OK to confirm or Cancel to go back`
-            if (confirm(text) == true) {
-                chrome.scripting.executeScript(
-                    {
-                        target: { tabId: tabId },
-                        func: clearDomainStorageData,
-                        args: [session], // passing typeOfStorage to clearDomainStorageData func
-                    },
-                    () => {
-                        try {
-                            console.log(
-                                'Clearing Session Storage Values Successfull'
-                            )
-                            feedBackForSessionStorage.innerHTML =
-                                'All the session storage values are cleared. ✔️'
-                        } catch (err) {
-                            console.error(
-                                'Error occured in injectionResults of clearSessionStorageBtn',
-                                err
-                            )
-                        }
-                    }
-                )
-            }
-        })
-
-        footerInfo.addEventListener('click', (event) => {
-            if (event?.target?.id === 'infoTitle') {
-                changeFooterTabStyles(event?.target?.id)
-                showHideFooterTabs('moreinfoContent')
-            } else if (event?.target?.id === 'supportTitle') {
-                changeFooterTabStyles(event?.target?.id)
-                showHideFooterTabs('supportContent')
-            } else if (event?.target?.id === 'reportTitle') {
-                changeFooterTabStyles(event?.target?.id)
-                showHideFooterTabs('reportContent')
-            }
-        })
-
-        /*
-        <-----------Event Listeners End------------------------------------------------------>
-        */
-    } catch (err) {
-        console.error('Error occured in global popup.js', err)
-    }
-})()
+    })
+)
