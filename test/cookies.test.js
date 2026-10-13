@@ -76,8 +76,9 @@ test('toSnapshot keeps the source domain for collisions, not the store', () => {
     })
     assert.deepEqual(result, {
         name: 'a', value: 'b', domain: 'example.com', hostOnly: false, path: '/x', secure: true,
-        httpOnly: true, sameSite: 'strict', session: false, expirationDate: NOW + 10,
+        httpOnly: true, sameSite: 'strict', session: false, partitioned: false, expirationDate: NOW + 10,
     })
+    assert.equal(toSnapshot({ name: 'p', value: 'v', domain: 'a', partitionKey: { topLevelSite: 'https://a' } }).partitioned, true)
     assert.equal('expirationDate' in toSnapshot({ name: 'a', value: 'b', domain: 'a', session: true }), false)
 })
 
@@ -150,7 +151,28 @@ test('keeps persistent expiry and skips expired cookies', () => {
     assert.deepEqual(skipped.map((s) => s.name), ['dead', 'broken'])
 })
 
-test('removalUrl matches the cookie domain and scheme', () => {
-    assert.equal(removalUrl({ domain: '.example.com', path: '/', secure: true }), 'https://example.com/')
-    assert.equal(removalUrl({ domain: 'localhost', path: '/api', secure: false }), 'http://localhost/api')
+test('removalUrl uses the page host, never the cookie parent domain', () => {
+    assert.equal(removalUrl({ domain: '.example.com', path: '/', secure: true }, 'staging.example.com'), 'https://staging.example.com/')
+    assert.equal(removalUrl({ domain: 'localhost', path: '/api', secure: false }, 'localhost'), 'http://localhost/api')
+})
+
+test('partitioned cookies only belong to the page in its own top-level partition', () => {
+    const own = { topLevelSite: 'https://example.test', hasCrossSiteAncestor: false }
+    const c = (partitionKey) => ({ domain: 'staging.example.test', hostOnly: true, partitionKey })
+    assert.ok(appliesToHost(c(own), 'staging.example.test', own))
+    assert.ok(!appliesToHost(c({ topLevelSite: 'https://other.test' }), 'staging.example.test', own))
+    assert.ok(!appliesToHost(c({ ...own, hasCrossSiteAncestor: true }), 'staging.example.test', own))
+    assert.ok(!appliesToHost(c(own), 'staging.example.test', undefined))
+    assert.ok(appliesToHost(c(undefined), 'staging.example.test', own))
+})
+
+test('partitioned cookies are written into the target partition, or skipped without one', () => {
+    const target = { topLevelSite: 'http://localhost', hasCrossSiteAncestor: false }
+    const cookies = [snapshot({ partitioned: true, secure: true }), snapshot({ partitioned: false })]
+    const withKey = planCookieWrites(cookies, 'http://localhost:3000', NOW, target)
+    assert.deepEqual(withKey.writes.map((w) => w.partitionKey), [target, undefined])
+    assert.ok(withKey.writes[0].secure)
+    assert.equal(withKey.skipped.length, 0, 'same name partitioned and unpartitioned is not a collision')
+    const without = planCookieWrites(cookies, 'http://localhost:3000', NOW)
+    assert.deepEqual(without.skipped.map((s) => s.reason), ['partitioned'])
 })

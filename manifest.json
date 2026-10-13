@@ -25,6 +25,6 @@
     "64": "images/favicon64x64.png",
     "128": "images/favicon128x128.png"
   },
-  "minimum_chrome_version": "102",
+  "minimum_chrome_version": "132",
   "manifest_version": 3
 }

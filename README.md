@@ -44,6 +44,8 @@ The individual Get, Set and Clear buttons work the same way for one kind of data
   other plain http sites rather than downgraded.
 - **Duplicates:** when two copied cookies share a name and path, the more specific one is kept.
 - **Incognito** tabs use their own cookies, never your regular ones.
+- **Partitioned (CHIPS) cookies** are copied too, and written into the target site's own partition.
+- **Clear** removes only the cookies the current site uses, never same-named cookies of a parent site.
 
 ## Privacy
 
@@ -55,7 +57,7 @@ The individual Get, Set and Clear buttons work the same way for one kind of data
 
 ## Development
 
-Requires Node 20+.
+Requires Node 20+. The extension itself needs Chrome 132 or newer.
 
 ```bash
 npm test               # unit tests (node --test), no install needed

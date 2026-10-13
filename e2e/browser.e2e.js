@@ -216,3 +216,85 @@ test('browser pages give a readable error', async () => {
     })
     await page.close()
 })
+
+// Regressions from the review of 75f46ea (each reproduced in Chrome first).
+
+test('clearing a subdomain keeps a same-named host-only cookie on the parent', async () => {
+    await cdp.send('Storage.clearCookies')
+    await open(site('staging.example.test', '/parent'))
+    await extensionPage.evaluate(async () => {
+        await chrome.cookies.set({ url: 'http://example.test/', name: 'sid', value: 'parent-host-only' })
+        await chrome.cookies.set({ url: 'http://example.test/', name: 'sid', value: 'shared-domain', domain: '.example.test' })
+    })
+    const result = await run('cookies', 'clear', site('staging.example.test', '/parent'))
+    const { cookies } = await cdp.send('Storage.getCookies')
+    assert.deepEqual(result, { message: 'Cleared 1 cookie on staging.example.test.' })
+    assert.deepEqual(cookies.map((c) => c.value), ['parent-host-only'])
+})
+
+test('partitioned cookies are read, set into the target partition and cleared', async () => {
+    await cdp.send('Storage.clearCookies')
+    const local = await open(site('localhost', '/partitioned'))
+    await local.evaluate(() => {
+        document.cookie = 'chips=1; Secure; SameSite=None; Partitioned; Path=/'
+    })
+    assert.deepEqual(await run('cookies', 'get', site('localhost', '/partitioned')), {
+        message: 'Got 1 cookie from localhost.',
+    })
+    assert.deepEqual(await run('cookies', 'clear', site('localhost', '/partitioned')), {
+        message: 'Cleared 1 cookie on localhost.',
+    })
+    assert.equal((await cdp.send('Storage.getCookies')).cookies.length, 0)
+    assert.deepEqual(await run('cookies', 'set', site('localhost', '/partitioned')), {
+        message: 'Set 1 cookie on localhost.',
+    })
+    const [restored] = (await cdp.send('Storage.getCookies')).cookies
+    assert.equal(restored.name, 'chips')
+    assert.ok(restored.partitionKey, 'written back as a partitioned cookie')
+    await cdp.send('Storage.clearCookies')
+    await local.close()
+})
+
+test('cookies with ? or # in their path are cleared too', async () => {
+    await cdp.send('Storage.clearCookies')
+    const page = await open(site('localhost', '/odd-paths'))
+    await extensionPage.evaluate(async () => {
+        for (const path of ['/x?y', '/x#z']) {
+            await chrome.cookies.set({ url: 'http://localhost/', name: 'pathcookie', value: '1', path })
+        }
+    })
+    await run('cookies', 'clear', site('localhost', '/odd-paths'))
+    assert.deepEqual((await cdp.send('Storage.getCookies')).cookies.map((c) => c.path), [])
+    await page.close()
+})
+
+test('a quota failure during get all keeps the previous copy together', async () => {
+    await cdp.send('Storage.clearCookies')
+    const local = await open(site('localhost', '/copy-quota'))
+    await extensionPage.evaluate(async () => {
+        await chrome.storage.local.clear()
+        await chrome.storage.local.set({ local: [{ site: 'old' }], session: [{ site: 'old' }] })
+        await chrome.storage.session.set({ cookies: [{ name: 'sid', value: 'old', session: true, hostOnly: true, domain: 'localhost', path: '/' }] })
+    })
+    await local.evaluate(() => {
+        localStorage.clear()
+        sessionStorage.clear()
+        localStorage.setItem('site', 'new')
+        sessionStorage.setItem('site', 'new')
+        localStorage.setItem('bulk', '中'.repeat(2 * 1024 * 1024))
+        sessionStorage.setItem('bulk', '中'.repeat(2 * 1024 * 1024))
+    })
+    const result = await run('all', 'get', site('localhost', '/copy-quota'))
+    const kept = await extensionPage.evaluate(async () => {
+        const { local, session } = await chrome.storage.local.get(['local', 'session'])
+        const { cookies } = await chrome.storage.session.get('cookies')
+        return { local: local.find((e) => e.site)?.site, session: session.find((e) => e.site)?.site, cookies: cookies[0]?.value }
+    })
+    assert.match(result.error ?? '', /previous one was kept/)
+    assert.deepEqual(kept, { local: 'old', session: 'old', cookies: 'old' })
+    await local.evaluate(() => {
+        localStorage.clear()
+        sessionStorage.clear()
+    })
+    await local.close()
+})

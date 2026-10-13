@@ -6,24 +6,43 @@ const TAB = { id: 7, url: 'http://localhost:3000/home' }
 const INCOGNITO_TAB = { id: 9, url: 'http://localhost:3000/home' }
 
 // Minimal stand-in for the chrome APIs the actions use. `script` decides what
-// each executeScript call returns; cookies carry the store they live in.
-function fakeChrome({ script = () => ({ count: 0, entries: [] }), cookies = [], setFails = [], tabUrls = {} } = {}) {
+// each executeScript call returns. Cookies carry their store and optional
+// partition, and remove() deletes like Chrome: every cookie with that name
+// that would be sent to the URL's host, in that store and partition.
+function fakeChrome({
+    script = () => ({ count: 0, entries: [] }),
+    cookies = [],
+    setFails = [],
+    tabUrls = {},
+    partitions = {},
+    failAreaSet = null,
+} = {}) {
     const calls = { scripts: [], set: [], removed: [], requested: [] }
-    const area = () => {
+    const jar = [...cookies]
+    const area = (name) => {
         const data = {}
         return {
             data,
-            async get(key) {
-                return key in data ? { [key]: data[key] } : {}
+            async get(keys) {
+                return Object.fromEntries([keys].flat().filter((k) => k in data).map((k) => [k, data[k]]))
             },
             async set(items) {
+                if (failAreaSet === name) throw new Error('QUOTA_BYTES quota exceeded')
                 Object.assign(data, items)
+            },
+            async remove(keys) {
+                for (const key of [keys].flat()) delete data[key]
             },
         }
     }
+    const sentTo = (c, host) => {
+        const domain = c.domain.replace(/^\./, '')
+        return c.hostOnly ? domain === host : host === domain || host.endsWith(`.${domain}`)
+    }
     return {
         calls,
-        storage: { local: area(), session: area() },
+        jar,
+        storage: { local: area('local'), session: area('session') },
         tabs: {
             async get(id) {
                 return { id, url: tabUrls[id] ?? TAB.url }
@@ -40,7 +59,10 @@ function fakeChrome({ script = () => ({ count: 0, entries: [] }), cookies = [], 
                 return [{ id: '0', tabIds: [7] }, { id: '1', tabIds: [9] }]
             },
             async getAll({ storeId }) {
-                return cookies.filter((c) => (c.storeId ?? '0') === storeId)
+                return jar.filter((c) => (c.storeId ?? '0') === storeId)
+            },
+            async getPartitionKey({ tabId }) {
+                return { partitionKey: partitions[tabId] ?? { topLevelSite: 'http://localhost', hasCrossSiteAncestor: false } }
             },
             async set(details) {
                 calls.set.push(details)
@@ -48,6 +70,12 @@ function fakeChrome({ script = () => ({ count: 0, entries: [] }), cookies = [], 
             },
             async remove(details) {
                 calls.removed.push(details)
+                const host = new URL(details.url).hostname
+                for (let i = jar.length - 1; i >= 0; i--) {
+                    const c = jar[i]
+                    if (c.name === details.name && (c.storeId ?? '0') === details.storeId && sentTo(c, host) &&
+                        c.partitionKey?.topLevelSite === details.partitionKey?.topLevelSite) jar.splice(i, 1)
+                }
                 return details
             },
         },
@@ -253,6 +281,57 @@ test('clear all clears every kind', async () => {
     const message = await createActions(chrome).run('all', 'clear', TAB)
     assert.equal(message, 'Cleared 3 local storage values, 3 session storage values and 1 cookie on localhost.')
     assert.equal(chrome.calls.removed.length, 1)
+})
+
+test('clear keeps a same-named host-only cookie on the parent domain', async () => {
+    const tab = { id: 7, url: 'http://staging.example.test/' }
+    const chrome = fakeChrome({
+        tabUrls: { 7: tab.url },
+        cookies: [
+            cookie({ name: 'sid', value: 'parent-host-only', domain: 'example.test', hostOnly: true }),
+            cookie({ name: 'sid', value: 'shared-domain', domain: '.example.test', hostOnly: false }),
+        ],
+    })
+    const message = await createActions(chrome).run('cookies', 'clear', tab)
+    assert.equal(message, 'Cleared 1 cookie on staging.example.test.')
+    assert.deepEqual(chrome.jar.map((c) => c.value), ['parent-host-only'])
+})
+
+test('partitioned cookies of the page are read, written into the target partition and cleared', async () => {
+    const own = { topLevelSite: 'http://localhost', hasCrossSiteAncestor: false }
+    const chrome = fakeChrome({
+        cookies: [
+            cookie({ name: 'chips', secure: true, partitionKey: own }),
+            cookie({ name: 'embedded', secure: true, partitionKey: { topLevelSite: 'https://other.test' } }),
+        ],
+    })
+    const actions = createActions(chrome)
+    assert.equal(await actions.run('cookies', 'get', TAB), 'Got 1 cookie from localhost.')
+    assert.equal(chrome.storage.session.data.cookies[0].partitioned, true)
+    await actions.run('cookies', 'set', TAB)
+    assert.deepEqual(chrome.calls.set[0].partitionKey, own)
+    assert.equal(await actions.run('cookies', 'clear', TAB), 'Cleared 1 cookie on localhost.')
+    assert.deepEqual(chrome.jar.map((c) => c.name), ['embedded'])
+})
+
+test('a failed save during get all restores the whole previous copy', async () => {
+    const chrome = fakeChrome({
+        script: () => ({ count: 1, entries: [{ site: 'new' }] }),
+        cookies: [cookie({ value: 'new' })],
+        failAreaSet: 'session',
+    })
+    Object.assign(chrome.storage.local.data, { local: [{ site: 'old' }], session: [{ site: 'old' }] })
+    chrome.storage.session.data.cookies = [cookie({ value: 'old' })]
+    await assert.rejects(createActions(chrome).run('all', 'get', TAB), /previous one was kept: QUOTA/)
+    assert.deepEqual(chrome.storage.local.data.local, [{ site: 'old' }])
+    assert.deepEqual(chrome.storage.local.data.session, [{ site: 'old' }])
+    assert.equal(chrome.storage.session.data.cookies[0].value, 'old')
+})
+
+test('a failed first get all leaves no partial copy behind', async () => {
+    const chrome = fakeChrome({ script: () => ({ count: 1, entries: [{ site: 'new' }] }), failAreaSet: 'session' })
+    await assert.rejects(createActions(chrome).run('all', 'get', TAB), /previous one was kept/)
+    assert.deepEqual(chrome.storage.local.data, {})
 })
 
 test('hostOf falls back for unparsable URLs', () => {
