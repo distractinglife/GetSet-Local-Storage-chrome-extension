@@ -38,7 +38,8 @@ The individual Get, Set and Clear buttons work the same way for one kind of data
 
 - **Permission per site.** The first time you use cookies on a site, Chrome asks for access to that
   site and its parent domains. Nothing is requested at install time, and access is only for sites you
-  choose. If the popup closes while Chrome asks, open it and click again.
+  choose. If the popup closes while Chrome asks, open it and click again. If you decline, the
+  All buttons still handle local and session storage and say that cookies were skipped.
 - **Written as host-only cookies** on the target site, keeping their path and expiry.
 - **Secure cookies stay secure.** They are written to https sites and to localhost, and skipped on
   other plain http sites rather than downgraded.

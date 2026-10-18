@@ -22,7 +22,8 @@ function setBusy(busy) {
     buttons.forEach((button) => (button.disabled = busy))
 }
 
-function clearQuestion(kind, host) {
+function clearQuestion(kind, host, cookies) {
+    if (kind === 'all' && !cookies) return `Clear all local and session storage of ${host}?`
     if (kind === 'all') {
         return `Clear all local storage, session storage and cookies of ${host}? You will likely be logged out.`
     }
@@ -40,9 +41,10 @@ function run(kind, action) {
     setBusy(true)
     access
         .then((granted) => {
-            if (!granted) return `Cookie access was not granted for ${hostOf(tab)}.`
-            if (action === 'clear' && !confirm(clearQuestion(kind, hostOf(tab)))) return 'Cancelled.'
-            return actions.run(kind, action, tab)
+            // Declined access only stops the Cookies row; the All row still does storage.
+            if (!granted && kind !== 'all') return `Cookie access was not granted for ${hostOf(tab)}.`
+            if (action === 'clear' && !confirm(clearQuestion(kind, hostOf(tab), granted))) return 'Cancelled.'
+            return actions.run(kind, action, tab, { cookies: granted })
         })
         .then(
             (message) => show(message),

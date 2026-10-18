@@ -334,6 +334,35 @@ test('a failed first get all leaves no partial copy behind', async () => {
     assert.deepEqual(chrome.storage.local.data, {})
 })
 
+test('get all with cookies declined copies storage and drops the old cookie copy', async () => {
+    const chrome = fakeChrome({ script: () => ({ count: 1, entries: [{ site: 'new' }] }), cookies: [cookie({})] })
+    chrome.storage.session.data.cookies = [cookie({ value: 'old-site' })]
+    const message = await createActions(chrome).run('all', 'get', TAB, { cookies: false })
+    assert.equal(
+        message,
+        'Got 1 local storage value and 1 session storage value from localhost. Cookies skipped: access not granted for localhost.'
+    )
+    assert.deepEqual(chrome.storage.local.data.local, [{ site: 'new' }])
+    assert.deepEqual(chrome.storage.session.data.cookies, [])
+})
+
+test('set all and clear all with cookies declined never touch cookies', async () => {
+    const chrome = fakeChrome({ script: () => ({ count: 2 }), cookies: [cookie({})] })
+    await chrome.storage.local.set({ local: [{ a: '1' }, { b: '2' }] })
+    await chrome.storage.session.set({ cookies: [cookie({ name: 'copied' })] })
+    const actions = createActions(chrome)
+    assert.equal(
+        await actions.run('all', 'set', TAB, { cookies: false }),
+        'Set 2 local storage values on localhost. Cookies skipped: access not granted for localhost.'
+    )
+    assert.equal(
+        await actions.run('all', 'clear', TAB, { cookies: false }),
+        'Cleared 2 local storage values and 2 session storage values on localhost. Cookies skipped: access not granted for localhost.'
+    )
+    assert.equal(chrome.calls.set.length + chrome.calls.removed.length, 0)
+    assert.equal(chrome.jar.length, 1)
+})
+
 test('hostOf falls back for unparsable URLs', () => {
     assert.equal(hostOf({ url: 'https://a.test/x' }), 'a.test')
     assert.equal(hostOf({}), 'this page')
