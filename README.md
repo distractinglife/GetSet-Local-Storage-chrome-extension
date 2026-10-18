@@ -50,6 +50,8 @@ The individual Get, Set and Clear buttons work the same way for one kind of data
 
 ## Privacy
 
+Full policy: [PRIVACY.md](PRIVACY.md).
+
 - Everything stays in your browser. Nothing is sent to any server, and there is no tracking.
 - Copied cookies are kept in memory only and disappear when the browser closes. Storage values are
   kept in the extension's local storage until you Get again.
